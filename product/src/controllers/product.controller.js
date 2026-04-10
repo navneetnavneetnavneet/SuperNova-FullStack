@@ -1,6 +1,7 @@
 const productModel = require("../models/product.model");
 const imagekitService = require("../services/imagekit.service");
 const mongoose = require("mongoose");
+const { publishToQueue } = require("../broker/broker");
 
 module.exports.createProduct = async (req, res) => {
   try {
@@ -25,6 +26,13 @@ module.exports.createProduct = async (req, res) => {
       price,
       seller,
       images,
+    });
+
+    await publishToQueue("PRODUCT_NOTIFICATION.PRODUCT_CREATED", {
+      email: req.user.email,
+      username: req.user.username,
+      productId: product._id,
+      seller: seller,
     });
 
     res.status(201).json({

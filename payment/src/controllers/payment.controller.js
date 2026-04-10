@@ -1,6 +1,7 @@
 const paymentModel = require("../models/payment.model");
 const mongoose = require("mongoose");
 const axios = require("axios");
+const { publishToQueue } = require("../broker/broker");
 
 const Razorpay = require("razorpay");
 
@@ -43,6 +44,14 @@ module.exports.createPayment = async (req, res) => {
       },
     });
 
+    await publishToQueue("PAYMENT_NOTIFICATION.PAYMENT_INITIATED", {
+      email: req.user.email,
+      username: req.user.username,
+      orderId: orderId,
+      amount: price.amount / 100,
+      currency: price.currency,
+    });
+
     res.status(201).json({
       message: "Payment initiated successfully",
       payment,
@@ -60,7 +69,9 @@ module.exports.verifyPayment = async (req, res) => {
     const { razorpayOrderId, paymentId, signature } = req.body;
     const secret = process.env.RAZORPAY_KEY_SECRET;
 
-    const { validatePaymentVerification } = require("razorpay/dist/utils/razorpay-utils");
+    const {
+      validatePaymentVerification,
+    } = require("razorpay/dist/utils/razorpay-utils");
 
     const isValid = validatePaymentVerification(
       { order_id: razorpayOrderId, payment_id: paymentId },
@@ -83,11 +94,27 @@ module.exports.verifyPayment = async (req, res) => {
 
     await payment.save();
 
+    await publishToQueue("PAYMENT_NOTIFICATION.PAYMENT_COMPLETED", {
+      email: req.user.email,
+      username: req.user.username,
+      orderId: payment.order,
+      paymentId: payment.paymentId,
+      amount: payment.price.amount / 100,
+      currency: payment.price.currency,
+    });
+
     res.status(200).json({
       message: "Payment verified successfully",
       payment,
     });
   } catch (error) {
+    await publishToQueue("PAYMENT_NOTIFICATION.PAYMENT_FAILED", {
+      email: req.user.email,
+      username: req.user.username,
+      paymentId: paymentId,
+      orderId: razorpayOrderId,
+    });
+
     return res.status(500).json({
       message: "Internal server error",
       error: error.message,
