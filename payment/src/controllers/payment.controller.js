@@ -44,13 +44,16 @@ module.exports.createPayment = async (req, res) => {
       },
     });
 
-    await publishToQueue("PAYMENT_NOTIFICATION.PAYMENT_INITIATED", {
-      email: req.user.email,
-      username: req.user.username,
-      orderId: orderId,
-      amount: price.amount / 100,
-      currency: price.currency,
-    });
+    await Promise.all([
+      publishToQueue("PAYMENT_NOTIFICATION.PAYMENT_INITIATED", {
+        email: req.user.email,
+        username: req.user.username,
+        orderId: orderId,
+        amount: price.amount / 100,
+        currency: price.currency,
+      }),
+      publishToQueue("PAYMENT_SELLER_DASHBOARD.PAYMENT.CREATED", payment),
+    ]);
 
     res.status(201).json({
       message: "Payment initiated successfully",
@@ -94,14 +97,18 @@ module.exports.verifyPayment = async (req, res) => {
 
     await payment.save();
 
-    await publishToQueue("PAYMENT_NOTIFICATION.PAYMENT_COMPLETED", {
-      email: req.user.email,
-      username: req.user.username,
-      orderId: payment.order,
-      paymentId: payment.paymentId,
-      amount: payment.price.amount / 100,
-      currency: payment.price.currency,
-    });
+    await Promise.all([
+      publishToQueue("PAYMENT_NOTIFICATION.PAYMENT_COMPLETED", {
+        email: req.user.email,
+        username: req.user.username,
+        orderId: payment.order,
+        paymentId: payment.paymentId,
+        amount: payment.price.amount / 100,
+        currency: payment.price.currency,
+      }),
+
+      publishToQueue("PAYMENT_SELLER_DASHBOARD.PAYMENT_UPDATED", payment),
+    ]);
 
     res.status(200).json({
       message: "Payment verified successfully",

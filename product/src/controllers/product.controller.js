@@ -28,12 +28,15 @@ module.exports.createProduct = async (req, res) => {
       images,
     });
 
-    await publishToQueue("PRODUCT_NOTIFICATION.PRODUCT_CREATED", {
-      email: req.user.email,
-      username: req.user.username,
-      productId: product._id,
-      seller: seller,
-    });
+    await Promise.all([
+      publishToQueue("PRODUCT_NOTIFICATION.PRODUCT_CREATED", {
+        email: req.user.email,
+        username: req.user.username,
+        productId: product._id,
+        seller: seller,
+      }),
+      publishToQueue("PRODUCT_SELLER_DASHBOARD.PRODUCT_CREATED", product),
+    ]);
 
     res.status(201).json({
       message: "Product created successfully",

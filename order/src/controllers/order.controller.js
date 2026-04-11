@@ -1,6 +1,7 @@
 const orderModel = require("../models/order.model");
 const axios = require("axios");
 const mongoose = require("mongoose");
+const { publishToQueue } = require("../broker/broker");
 
 module.exports.createOrder = async (req, res) => {
   try {
@@ -31,6 +32,7 @@ module.exports.createOrder = async (req, res) => {
     );
 
     let totalAmount = 0;
+    let currency = "";
 
     const orderItems = cartResponse.data.cart.items.map((item) => {
       const product = products.find(
@@ -46,6 +48,7 @@ module.exports.createOrder = async (req, res) => {
 
       const itemTotal = product.price.amount * item.quantity;
       totalAmount = totalAmount + itemTotal;
+      currency = product.price.currency;
 
       return {
         productId: item.productId,
@@ -63,10 +66,12 @@ module.exports.createOrder = async (req, res) => {
       status: "PENDING",
       totalPrice: {
         amount: totalAmount,
-        currency: "INR",
+        currency: currency,
       },
       shippingAddress: req.body.shippingAddress,
     });
+
+    await publishToQueue("ORDER_SELLER_DASHBOARD.ORDER_CREATED", order);
 
     res.status(201).json({
       message: "Order created successfully",
