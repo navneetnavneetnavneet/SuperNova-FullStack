@@ -13,9 +13,9 @@ app.use(express.json());
 // morgan
 app.use(morgan("dev"));
 
-// routes
-app.get("/", (req, res) => {
-  res.json({ message: "Notification service is runninig and up" });
+// health check (no auth required)
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ message: "Notification service is running" });
 });
 
 module.exports = app;

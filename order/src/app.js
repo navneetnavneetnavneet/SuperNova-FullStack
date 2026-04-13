@@ -18,4 +18,9 @@ app.use(morgan("dev"));
 // routes
 app.use("/api/orders", orderRoutes);
 
+// health check (no auth required)
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ message: "Order service is running" });
+});
+
 module.exports = app;

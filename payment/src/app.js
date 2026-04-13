@@ -18,4 +18,9 @@ app.use(morgan("dev"));
 // routes
 app.use("/api/payments", paymentRoutes);
 
+// health check (no auth required)
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ message: "Payment service is running" });
+});
+
 module.exports = app;
