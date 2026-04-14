@@ -1,0 +1,21 @@
+const express = require("express");
+const app = express();
+const morgan = require("morgan");
+const cookieParser = require("cookie-parser");
+
+// cookie-parser
+app.use(cookieParser());
+
+// body-parser
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// morgan
+app.use(morgan("dev"));
+
+// health check (no auth required)
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ message: "AI Buddy service is running" });
+});
+
+module.exports = app;
